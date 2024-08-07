@@ -87,7 +87,7 @@ namespace dht11_dht22 {
             for (let index = 0; index < 40; index++) {
                 while (pins.digitalReadPin(dataPin) == 1);
                 while (pins.digitalReadPin(dataPin) == 0);
-                control.waitMicros(28)
+                control.waitMicros(49)
                 //if sensor still pull up data pin after 28 us it means 1, otherwise 0
                 if (pins.digitalReadPin(dataPin) == 1) dataArray[index] = true
             }
