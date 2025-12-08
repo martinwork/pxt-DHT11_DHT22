@@ -1,6 +1,7 @@
 /**
  * MakeCode editor extension for DHT11 and DHT22 humidity/temperature sensors
  * by Alan Wang
+ * micro:bit V2 updates for Micro:bit Educational Foundation
  */
 
 enum DHTtype {
@@ -63,22 +64,27 @@ namespace dht11_dht22 {
         startTime = input.runningTimeMicros()
 
         //request data
-        pins.digitalWritePin(dataPin, 0) //begin protocol, pull down pin
-        basic.pause(18)
-        
-        if (pullUp) pins.setPull(dataPin, PinPullMode.PullUp) //pull up data pin if needed
-        pins.digitalReadPin(dataPin) //pull up pin
-        control.waitMicros(40)
-        
-        if (pins.digitalReadPin(dataPin) == 1) {
-            if (serialOtput) {
-                serial.writeLine(DHTstr + " not responding!")
-                serial.writeLine("----------------------------------------")
+       
+        if ( control.ramSize() > 16384) {
+            if (pullUp) pins.setPull(dataPin, PinPullMode.PullUp) //pull up data pin if needed
+            v2Read( dataPin)
+            for (let index = 0; index < 5; index++) {
+                resultArray[index] = v2Byte( index);
             }
+            _sensorresponding = v2Responding()
+            _readSuccessful   = v2Successful()
+            serial.writeLine("_sensorresponding " + _sensorresponding + " _readSuccessful " + _readSuccessful)
 
-        } else {
+            endTime = input.runningTimeMicros()
+        } else if (pins.digitalReadPin(dataPin) == 0) {
+            pins.digitalWritePin(dataPin, 0) //begin protocol, pull down pin
+            basic.pause(18)
+            
+            if (pullUp) pins.setPull(dataPin, PinPullMode.PullUp) //pull up data pin if needed
+            pins.digitalReadPin(dataPin) //pull up pin
+            control.waitMicros(40)
 
-            _sensorresponding = true
+             _sensorresponding = true
 
             while (pins.digitalReadPin(dataPin) == 0); //sensor response
             while (pins.digitalReadPin(dataPin) == 1); //sensor response
@@ -105,29 +111,31 @@ namespace dht11_dht22 {
             if (checksumTmp >= 512) checksumTmp -= 512
             if (checksumTmp >= 256) checksumTmp -= 256
             if (checksum == checksumTmp) _readSuccessful = true
+        }
 
-            //read data if checksum ok
-            if (_readSuccessful) {
-                if (DHT == DHTtype.DHT11) {
-                    //DHT11
-                    _humidity = resultArray[0] + resultArray[1] / 100
-                    _temperature = resultArray[2] + resultArray[3] / 100
-                } else {
-                    //DHT22
-                    let temp_sign: number = 1
-                    if (resultArray[2] >= 128) {
-                        resultArray[2] -= 128
-                        temp_sign = -1
-                    }
-                    _humidity = (resultArray[0] * 256 + resultArray[1]) / 10
-                    _temperature = (resultArray[2] * 256 + resultArray[3]) / 10 * temp_sign
+        //read data if checksum ok
+        if (_readSuccessful) {
+            if (DHT == DHTtype.DHT11) {
+                //DHT11
+                _humidity = resultArray[0] + resultArray[1] / 100
+                _temperature = resultArray[2] + resultArray[3] / 100
+            } else {
+                //DHT22
+                let temp_sign: number = 1
+                if (resultArray[2] >= 128) {
+                    resultArray[2] -= 128
+                    temp_sign = -1
                 }
-                if (_temptype == tempType.fahrenheit)
-                    _temperature = _temperature * 9 / 5 + 32
+                _humidity = (resultArray[0] * 256 + resultArray[1]) / 10
+                _temperature = (resultArray[2] * 256 + resultArray[3]) / 10 * temp_sign
             }
+            if (_temptype == tempType.fahrenheit)
+                _temperature = _temperature * 9 / 5 + 32
+        }
 
-            //serial output
-            if (serialOtput) {
+        //serial output
+        if (serialOtput) {
+            if (_sensorresponding) {
                 serial.writeLine(DHTstr + " query completed in " + (endTime - startTime) + " microseconds")
                 if (_readSuccessful) {
                     serial.writeLine("Checksum ok")
@@ -137,8 +145,10 @@ namespace dht11_dht22 {
                     serial.writeLine("Checksum error")
                 }
                 serial.writeLine("----------------------------------------")
+            } else {
+                serial.writeLine(DHTstr + " not responding!")
+                serial.writeLine("----------------------------------------")
             }
-
         }
 
         //wait 2 sec after query if needed
@@ -178,4 +188,28 @@ namespace dht11_dht22 {
         return _sensorresponding
     }
 
+    //% shim=dht11_dht22::v2Read
+    export function v2Read( name: number): void {
+        basic.pause(0)
+    }
+
+    //% shim=dht11_dht22::v2Read
+    export function v2ReadAsync( name: number): void {
+        basic.pause(0)
+    }
+
+    //% shim=dht11_dht22::v2Byte
+    function v2Byte( index : number): number {
+        return 0;
+    }
+
+    //% shim=dht11_dht22::v2Responding
+    function v2Responding(): boolean {
+        return true;
+    }
+
+    //% shim=dht11_dht22::v2Successful
+    function v2Successful(): boolean {
+        return true;
+    }
 }
